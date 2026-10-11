@@ -116,6 +116,18 @@ def initialize_database():
             conn_target.commit()
             print("   [OK] Lost and Found Module (lost_and_found.sql) applied!")
 
+        # Update lost_and_found status check constraint to include Found (Not Yet Received)
+        try:
+            cur_target.execute("""
+                ALTER TABLE public.lost_and_found DROP CONSTRAINT IF EXISTS lost_and_found_status_check;
+                ALTER TABLE public.lost_and_found ADD CONSTRAINT lost_and_found_status_check
+                    CHECK (status IN ('Reported', 'Pending', 'Investigating', 'Found', 'Returned', 'Claimed', 'Closed', 'Discarded', 'Found (Not Yet Received)', 'Found - Not Yet Received'));
+            """)
+            conn_target.commit()
+        except Exception as e:
+            conn_target.rollback()
+            print(f"   [NOTICE] Lost and found constraint check: {e}")
+
         # Step 3: Insert seed data if tables are empty
         cur_target.execute("SELECT COUNT(*) FROM rooms;")
         room_count = cur_target.fetchone()[0]

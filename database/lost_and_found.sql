@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS public.lost_and_found (
     reporter_email VARCHAR(100) NOT NULL,
     reporter_phone VARCHAR(30),
     status VARCHAR(30) NOT NULL DEFAULT 'Reported' 
-        CHECK (status IN ('Reported', 'Investigating', 'Found', 'Returned', 'Claimed', 'Closed', 'Pending', 'Discarded')),
+        CHECK (status IN ('Reported', 'Investigating', 'Found', 'Found (Not Yet Received)', 'Found - Not Yet Received', 'Returned', 'Claimed', 'Closed', 'Pending', 'Discarded')),
     found_by_staff_id INT REFERENCES public.staff(staff_id) ON DELETE SET NULL,
     staff_notes TEXT,
     resolved_at TIMESTAMP WITH TIME ZONE,

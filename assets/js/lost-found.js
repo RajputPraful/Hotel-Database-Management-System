@@ -140,7 +140,8 @@ const pendingStatusUpdates = new Set();
 function getStatusBadgeConfig(status) {
   let badgeClass = 'bg-warning text-dark';
   let icon = 'fa-triangle-exclamation';
-  if (status === 'Found') { badgeClass = 'bg-primary text-white'; icon = 'fa-magnifying-glass-location'; }
+  if (status === 'Found (Not Yet Received)' || status === 'Found - Not Yet Received') { badgeClass = 'bg-warning text-dark'; icon = 'fa-clock-rotate-left'; }
+  else if (status === 'Found') { badgeClass = 'bg-primary text-white'; icon = 'fa-magnifying-glass-location'; }
   else if (status === 'Returned') { badgeClass = 'bg-success text-white'; icon = 'fa-hand-holding-heart'; }
   else if (status === 'Claimed') { badgeClass = 'bg-success text-white'; icon = 'fa-circle-check'; }
   else if (status === 'Investigating') { badgeClass = 'bg-info text-dark'; icon = 'fa-clock'; }
@@ -236,6 +237,7 @@ async function loadLostAndFoundReports() {
                   <ul class="dropdown-menu dropdown-menu-end shadow">
                     <li><a class="dropdown-item ${r.status === 'Reported' ? 'active' : ''}" href="javascript:void(0)" onclick="updateStatusPrompt(${r.report_id}, 'Reported')"><i class="fa-solid fa-triangle-exclamation text-warning me-2"></i>Reported</a></li>
                     <li><a class="dropdown-item ${r.status === 'Investigating' ? 'active' : ''}" href="javascript:void(0)" onclick="updateStatusPrompt(${r.report_id}, 'Investigating')"><i class="fa-solid fa-clock text-info me-2"></i>Investigating</a></li>
+                    <li><a class="dropdown-item ${(r.status === 'Found (Not Yet Received)' || r.status === 'Found - Not Yet Received') ? 'active' : ''}" href="javascript:void(0)" onclick="updateStatusPrompt(${r.report_id}, 'Found (Not Yet Received)')"><i class="fa-solid fa-clock-rotate-left text-warning me-2"></i>Found (Not Yet Received)</a></li>
                     <li><a class="dropdown-item ${r.status === 'Found' ? 'active' : ''}" href="javascript:void(0)" onclick="updateStatusPrompt(${r.report_id}, 'Found')"><i class="fa-solid fa-magnifying-glass-location text-primary me-2"></i>Found (Item in Custody)</a></li>
                     <li><a class="dropdown-item ${r.status === 'Returned' ? 'active' : ''}" href="javascript:void(0)" onclick="updateStatusPrompt(${r.report_id}, 'Returned')"><i class="fa-solid fa-hand-holding-heart text-success me-2"></i>Returned (Returned to Owner)</a></li>
                     <li><a class="dropdown-item ${r.status === 'Claimed' ? 'active' : ''}" href="javascript:void(0)" onclick="updateStatusPrompt(${r.report_id}, 'Claimed')"><i class="fa-solid fa-circle-check text-success me-2"></i>Claimed (Owner Verified)</a></li>

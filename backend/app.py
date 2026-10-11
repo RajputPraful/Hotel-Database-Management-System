@@ -1903,12 +1903,23 @@ def update_lost_and_found_status(report_id):
         data = request.get_json(silent=True) or {}
         new_status_raw = (data.get("status") or "").strip()
 
-        valid_statuses = ["Reported", "Investigating", "Found", "Returned", "Claimed", "Closed", "Pending", "Discarded"]
+        valid_statuses = [
+            "Reported",
+            "Investigating",
+            "Found",
+            "Found (Not Yet Received)",
+            "Found - Not Yet Received",
+            "Returned",
+            "Claimed",
+            "Closed",
+            "Pending",
+            "Discarded",
+        ]
         matched_status = next((s for s in valid_statuses if s.lower() == new_status_raw.lower()), None)
 
         if not new_status_raw or not matched_status:
             return jsonify({
-                "error": f"Invalid status '{new_status_raw}'. Allowed statuses: Reported, Investigating, Found, Returned, Claimed, Closed."
+                "error": f"Invalid status '{new_status_raw}'. Allowed statuses: Reported, Investigating, Found (Not Yet Received), Found, Returned, Claimed, Closed."
             }), 400
 
         # Role & Authorization validation

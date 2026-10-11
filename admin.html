@@ -654,16 +654,16 @@
             </div>
             <div class="col-md-3">
               <div class="card p-3 border-0 shadow-sm rounded-4 bg-white text-center">
-                <div class="text-muted small fw-semibold">Located / Found</div>
-                <h3 class="font-serif text-warning mb-0 mt-1" id="lfMetricFound">0</h3>
-                <small class="text-warning">At Front Desk</small>
+                <div class="text-muted small fw-semibold">Found (Not Yet Received)</div>
+                <h3 class="font-serif text-warning mb-0 mt-1" id="lfMetricFoundNotReceived">0</h3>
+                <small class="text-warning">Awaiting desk handover</small>
               </div>
             </div>
             <div class="col-md-3">
               <div class="card p-3 border-0 shadow-sm rounded-4 bg-white text-center">
-                <div class="text-muted small fw-semibold">Claimed & Returned</div>
+                <div class="text-muted small fw-semibold">In Custody / Claimed</div>
                 <h3 class="font-serif text-success mb-0 mt-1" id="lfMetricClaimed">0</h3>
-                <small class="text-success">Safely returned</small>
+                <small class="text-success">At Desk or Claimed</small>
               </div>
             </div>
           </div>
@@ -679,10 +679,13 @@
               </div>
               <div class="col-md-4">
                 <select id="adminLfStatusFilter" class="form-select border-0 bg-light" onchange="filterAdminLostFound()">
-                  <option value="All">All Statuses (Pending, Found, Claimed, Discarded)</option>
+                  <option value="All">All Statuses (All Records)</option>
                   <option value="Pending">Pending Recovery</option>
+                  <option value="Found (Not Yet Received)">Found (Not Yet Received)</option>
                   <option value="Found">Located / Held at Front Desk</option>
                   <option value="Claimed">Claimed by Guest</option>
+                  <option value="Returned">Returned to Owner</option>
+                  <option value="Investigating">Under Investigation</option>
                   <option value="Discarded">Discarded / Closed</option>
                 </select>
               </div>
@@ -1170,6 +1173,54 @@
         </div>
         <div class="modal-body p-4" id="viewAuditLogModalBody">
           <!-- Rendered dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: UPDATE LOST & FOUND STATUS -->
+  <div class="modal fade" id="modalUpdateLostFound" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-4 border-0 shadow-lg">
+        <div class="modal-header bg-navy text-white rounded-top-4" style="background: var(--primary-navy);">
+          <h5 class="modal-title font-serif text-gold"><i class="fa-solid fa-clipboard-check me-2"></i> Update Lost &amp; Found Item Status</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <form onsubmit="event.preventDefault(); submitUpdateLostFoundModal();">
+            <input type="hidden" id="ulfItemId">
+            
+            <div class="p-3 bg-light rounded-3 mb-3 border">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <strong id="ulfItemName" class="fs-6 text-dark">-</strong>
+                <span id="ulfItemBadge" class="badge bg-secondary">-</span>
+              </div>
+              <small class="text-muted d-block" id="ulfItemMeta">-</small>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label-custom">Select New Status</label>
+              <select id="ulfNewStatus" class="form-select form-control-luxury" required>
+                <option value="Found (Not Yet Received)">📍 Found (Not Yet Received) — Located by staff, awaiting handover to Front Desk</option>
+                <option value="Found">📦 Found (In Front Desk Custody) — Safely received &amp; logged at desk</option>
+                <option value="Claimed">🤝 Claimed — Handed over and verified with guest</option>
+                <option value="Returned">✨ Returned — Returned to original guest owner</option>
+                <option value="Investigating">🔍 Investigating — Staff actively checking cameras / areas</option>
+                <option value="Pending">⏳ Pending — Not yet located, search open</option>
+                <option value="Closed">🔒 Closed — Investigation completed / case closed</option>
+                <option value="Discarded">🗑️ Discarded — Unclaimed after statutory holding period</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label-custom">Resolution / Handover Notes</label>
+              <textarea id="ulfNotes" class="form-control form-control-luxury" rows="3" placeholder="e.g. Located on 2nd floor elevator by Housekeeping, awaiting handover to Front Desk..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-gold w-100 py-3 font-weight-bold">
+              <i class="fa-solid fa-save me-2"></i> Save Status Update
+            </button>
+          </form>
         </div>
       </div>
     </div>
@@ -2093,18 +2144,18 @@
 
         // Update KPI metrics
         const total = adminLostFoundItems.length;
-        const pending = adminLostFoundItems.filter(i => i.status === 'Pending').length;
-        const found = adminLostFoundItems.filter(i => i.status === 'Found').length;
-        const claimed = adminLostFoundItems.filter(i => i.status === 'Claimed').length;
+        const pending = adminLostFoundItems.filter(i => i.status === 'Pending' || i.status === 'Reported').length;
+        const foundNotRec = adminLostFoundItems.filter(i => i.status === 'Found (Not Yet Received)' || i.status === 'Found - Not Yet Received').length;
+        const inCustodyOrClaimed = adminLostFoundItems.filter(i => i.status === 'Found' || i.status === 'Claimed' || i.status === 'Returned').length;
 
         const elTotal = document.getElementById('lfMetricTotal');
         const elPending = document.getElementById('lfMetricPending');
-        const elFound = document.getElementById('lfMetricFound');
+        const elFoundNotRec = document.getElementById('lfMetricFoundNotReceived');
         const elClaimed = document.getElementById('lfMetricClaimed');
         if (elTotal) elTotal.textContent = total;
         if (elPending) elPending.textContent = pending;
-        if (elFound) elFound.textContent = found;
-        if (elClaimed) elClaimed.textContent = claimed;
+        if (elFoundNotRec) elFoundNotRec.textContent = foundNotRec;
+        if (elClaimed) elClaimed.textContent = inCustodyOrClaimed;
 
         filterAdminLostFound();
       } catch (err) {
@@ -2119,7 +2170,14 @@
       if (!tbody) return;
 
       const filtered = adminLostFoundItems.filter(item => {
-        const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
+        let matchesStatus = false;
+        if (statusFilter === 'All') {
+          matchesStatus = true;
+        } else if (statusFilter === 'Found (Not Yet Received)') {
+          matchesStatus = (item.status === 'Found (Not Yet Received)' || item.status === 'Found - Not Yet Received');
+        } else {
+          matchesStatus = item.status === statusFilter;
+        }
         const searchStr = `${item.item_name} ${item.location} ${item.description || ''} ${item.customer_name || ''} ${item.customer_phone || ''} ${item.customer_email || ''}`.toLowerCase();
         const matchesQuery = !query || searchStr.includes(query);
         return matchesStatus && matchesQuery;
@@ -2136,11 +2194,13 @@
       }
 
       tbody.innerHTML = filtered.map(item => {
+        const isFoundNotReceived = item.status === 'Found (Not Yet Received)' || item.status === 'Found - Not Yet Received';
         const statusBadge = 
           item.status === 'Pending' ? '<span class="badge bg-danger">Pending</span>' :
-          item.status === 'Found' ? '<span class="badge bg-primary text-white">Found</span>' :
+          isFoundNotReceived ? '<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock-rotate-left me-1"></i>Found (Not Yet Received)</span>' :
+          item.status === 'Found' ? '<span class="badge bg-primary text-white"><i class="fa-solid fa-box-archive me-1"></i>Found (In Custody)</span>' :
           item.status === 'Returned' ? '<span class="badge bg-success">Returned</span>' :
-          item.status === 'Claimed' ? '<span class="badge bg-success">Claimed</span>' :
+          item.status === 'Claimed' ? '<span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Claimed</span>' :
           item.status === 'Investigating' ? '<span class="badge bg-info text-dark">Investigating</span>' :
           item.status === 'Closed' ? '<span class="badge bg-secondary">Closed</span>' :
           item.status === 'Reported' ? '<span class="badge bg-warning text-dark">Reported</span>' :
@@ -2168,20 +2228,71 @@
             <td>${statusBadge}</td>
             <td><small class="text-muted">${item.resolution_notes || '<span class="fst-italic">None</span>'}</small></td>
             <td>
-              <div class="d-flex flex-wrap gap-1">
-                ${item.status === 'Pending' ? `
-                  <button class="btn btn-sm btn-outline-warning rounded-pill px-2.5" onclick="updateAdminLostFoundStatus(${item.item_id}, 'Found')">
-                    <i class="fa-solid fa-check me-1"></i> Mark Found
+              <div class="d-flex flex-wrap gap-1 align-items-center">
+                <!-- Dropdown Menu with all selectable options -->
+                <div class="dropdown">
+                  <button class="btn btn-sm btn-outline-navy rounded-pill dropdown-toggle px-2.5 py-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fa-solid fa-pen-to-square me-1"></i> Update Status
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3">
+                    <li>
+                      <a class="dropdown-item py-1.5 ${isFoundNotReceived ? 'active fw-bold' : ''}" href="javascript:void(0)" onclick="openUpdateLostFoundModal(${item.item_id}, 'Found (Not Yet Received)')">
+                        <i class="fa-solid fa-clock-rotate-left text-warning me-2"></i><strong>Found (Not Yet Received)</strong>
+                        <small class="d-block text-muted ps-4">Located by staff, awaiting desk handover</small>
+                      </a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item py-1.5 ${item.status === 'Found' ? 'active fw-bold' : ''}" href="javascript:void(0)" onclick="openUpdateLostFoundModal(${item.item_id}, 'Found')">
+                        <i class="fa-solid fa-box-archive text-primary me-2"></i><strong>Found (In Custody)</strong>
+                        <small class="d-block text-muted ps-4">Safely received at Front Desk</small>
+                      </a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item py-1.5 ${item.status === 'Claimed' ? 'active fw-bold' : ''}" href="javascript:void(0)" onclick="openUpdateLostFoundModal(${item.item_id}, 'Claimed')">
+                        <i class="fa-solid fa-circle-check text-success me-2"></i><strong>Claimed by Guest</strong>
+                        <small class="d-block text-muted ps-4">Guest verified &amp; item returned</small>
+                      </a>
+                    </li>
+                    <li><hr class="dropdown-divider my-1"></li>
+                    <li>
+                      <a class="dropdown-item py-1.5 ${item.status === 'Investigating' ? 'active' : ''}" href="javascript:void(0)" onclick="openUpdateLostFoundModal(${item.item_id}, 'Investigating')">
+                        <i class="fa-solid fa-magnifying-glass text-info me-2"></i>Investigating
+                      </a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item py-1.5 ${item.status === 'Returned' ? 'active' : ''}" href="javascript:void(0)" onclick="openUpdateLostFoundModal(${item.item_id}, 'Returned')">
+                        <i class="fa-solid fa-hand-holding-heart text-success me-2"></i>Returned to Owner
+                      </a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item py-1.5 ${item.status === 'Pending' ? 'active' : ''}" href="javascript:void(0)" onclick="openUpdateLostFoundModal(${item.item_id}, 'Pending')">
+                        <i class="fa-solid fa-hourglass-half text-danger me-2"></i>Pending Recovery
+                      </a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item py-1.5 ${item.status === 'Closed' ? 'active' : ''}" href="javascript:void(0)" onclick="openUpdateLostFoundModal(${item.item_id}, 'Closed')">
+                        <i class="fa-solid fa-lock text-secondary me-2"></i>Closed Case
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+
+                <!-- One-click Quick Status Action buttons -->
+                ${(item.status === 'Pending' || item.status === 'Reported') ? `
+                  <button class="btn btn-sm btn-outline-warning rounded-pill px-2 py-1" onclick="openUpdateLostFoundModal(${item.item_id}, 'Found (Not Yet Received)')" title="Item located, awaiting physical handover to desk">
+                    <i class="fa-solid fa-clock-rotate-left me-1"></i> Found (Not Yet Received)
                   </button>
                 ` : ''}
+
+                ${isFoundNotReceived ? `
+                  <button class="btn btn-sm btn-outline-primary rounded-pill px-2 py-1" onclick="openUpdateLostFoundModal(${item.item_id}, 'Found')" title="Mark as physically received at Front Desk">
+                    <i class="fa-solid fa-box-archive me-1"></i> Mark Received
+                  </button>
+                ` : ''}
+
                 ${item.status === 'Found' ? `
-                  <button class="btn btn-sm btn-outline-success rounded-pill px-2.5" onclick="updateAdminLostFoundStatus(${item.item_id}, 'Claimed')">
+                  <button class="btn btn-sm btn-outline-success rounded-pill px-2 py-1" onclick="openUpdateLostFoundModal(${item.item_id}, 'Claimed')" title="Mark as claimed by verified guest">
                     <i class="fa-solid fa-handshake me-1"></i> Mark Claimed
-                  </button>
-                ` : ''}
-                ${item.status !== 'Claimed' && item.status !== 'Discarded' ? `
-                  <button class="btn btn-sm btn-outline-secondary rounded-pill px-2" onclick="promptCustomLostFoundStatus(${item.item_id}, '${item.status}')" title="Change status or add note">
-                    <i class="fa-solid fa-ellipsis"></i>
                   </button>
                 ` : ''}
               </div>
@@ -2191,23 +2302,73 @@
       }).join('');
     }
 
+    function openUpdateLostFoundModal(itemId, preselectedStatus = null) {
+      const item = adminLostFoundItems.find(i => (i.item_id == itemId || i.report_id == itemId));
+      if (!item) return;
+
+      document.getElementById('ulfItemId').value = itemId;
+      document.getElementById('ulfItemName').textContent = `LF-${itemId}: ${item.item_name}`;
+      document.getElementById('ulfItemBadge').textContent = item.status;
+      document.getElementById('ulfItemBadge').className = `badge ${
+        item.status === 'Pending' ? 'bg-danger' :
+        (item.status === 'Found (Not Yet Received)' || item.status === 'Found - Not Yet Received') ? 'bg-warning text-dark' :
+        item.status === 'Found' ? 'bg-primary' :
+        item.status === 'Claimed' ? 'bg-success' : 'bg-secondary'
+      }`;
+      document.getElementById('ulfItemMeta').innerHTML = `<i class="fa-solid fa-location-dot text-danger me-1"></i> Location: <strong>${item.location || item.location_lost}</strong> &bull; Reporter: <strong>${item.customer_name || item.reporter_name || 'Guest'}</strong>`;
+
+      const statusSelect = document.getElementById('ulfNewStatus');
+      if (statusSelect) {
+        statusSelect.value = preselectedStatus || item.status || 'Found (Not Yet Received)';
+      }
+
+      const notesInput = document.getElementById('ulfNotes');
+      if (notesInput) {
+        if (preselectedStatus === 'Found (Not Yet Received)') {
+          notesInput.value = `Item located by staff; awaiting physical handover to Front Desk.`;
+        } else if (preselectedStatus === 'Found') {
+          notesInput.value = `Item physically received and secured in Front Desk Lost & Found custody.`;
+        } else if (preselectedStatus === 'Claimed') {
+          notesInput.value = `Item claimed and returned to guest upon identity verification.`;
+        } else {
+          notesInput.value = item.resolution_notes || item.staff_notes || '';
+        }
+      }
+
+      const modal = new bootstrap.Modal(document.getElementById('modalUpdateLostFound'));
+      modal.show();
+    }
+
+    async function submitUpdateLostFoundModal() {
+      const itemId = document.getElementById('ulfItemId').value;
+      const newStatus = document.getElementById('ulfNewStatus').value;
+      const notes = document.getElementById('ulfNotes').value.trim();
+
+      const modalEl = document.getElementById('modalUpdateLostFound');
+      const modalInstance = bootstrap.Modal.getInstance(modalEl);
+      if (modalInstance) modalInstance.hide();
+
+      await updateAdminLostFoundStatus(itemId, newStatus, notes);
+    }
+
     async function updateAdminLostFoundStatus(itemId, newStatus, customNotes = null) {
       const user = getCurrentUser();
-      const staffId = (user && user.staff_id) ? user.staff_id : null;
-      let notes = customNotes;
-      if (notes === null) {
-        notes = prompt(`Enter resolution notes for status "${newStatus}":`, `Handled by Front Desk / Admin: ${user?.name || 'Staff'}`);
-        if (notes === null) return; // user cancelled prompt
-      }
+      const staffId = (user && (user.staff_id || user.id)) ? (user.staff_id || user.id) : 1;
+      const notes = customNotes !== null ? customNotes : `Status updated to ${newStatus} by ${user?.name || 'Admin'}.`;
 
       try {
         const res = await fetch(`http://127.0.0.1:5000/api/lost-and-found/${itemId}/status`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-Role': 'admin',
+            'X-Staff-Id': String(staffId)
+          },
           body: JSON.stringify({
             status: newStatus,
             staff_id: staffId,
-            resolution_notes: notes
+            resolution_notes: notes,
+            role: 'admin'
           })
         });
 
@@ -2219,18 +2380,6 @@
       } catch (err) {
         showToast(err.message, 'Update Failed', 'danger');
       }
-    }
-
-    function promptCustomLostFoundStatus(itemId, currentStatus) {
-      const target = prompt(`Enter new status (Reported, Investigating, Found, Returned, Claimed, Closed):`, currentStatus);
-      if (!target) return;
-      const valid = ['Reported', 'Investigating', 'Found', 'Returned', 'Claimed', 'Closed', 'Pending', 'Discarded'];
-      const formatted = valid.find(s => s.toLowerCase() === target.trim().toLowerCase());
-      if (!formatted) {
-        alert('Invalid status! Choose from: Reported, Investigating, Found, Returned, Claimed, Closed');
-        return;
-      }
-      updateAdminLostFoundStatus(itemId, formatted);
     }
 
     // Initial load

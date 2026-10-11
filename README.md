@@ -301,35 +301,45 @@ CREATE TABLE reservations (
 # 7. Project Structure
 
 ```text
-Hotel-Management-System-DBMS/
+dbms/
 │
 ├── assets/
 │   ├── css/
 │   │   └── style.css
 │   │
 │   └── js/
-│       └── auth.js
+│       ├── auth.js
+│       ├── data.js
+│       ├── lost-found.js
+│       └── ui-helpers.js
 │
 ├── backend/
-│   ├── venv/
 │   ├── app.py
 │   ├── database.py
-│   ├── requirements.txt
-│   └── test_db.py
+│   ├── init_db.py
+│   └── ...
 │
 ├── database/
 │   ├── schema.sql
 │   ├── data.sql
-│   └── queries.sql
+│   ├── master_setup.sql
+│   └── ...
 │
+├── admin.html
+├── customer-dashboard.html
+├── customer-login.html
 ├── index.html
 ├── login.html
-├── customer-login.html
-├── register.html
-├── customer-dashboard.html
-├── reception-login.html
+├── lost-and-found.html
 ├── reception-dashboard.html
+├── reception-login.html
+├── register.html
 ├── unauthorized.html
+├── commands.txt
+├── requirements.txt
+├── setup.bat
+├── start.bat
+├── view_database.bat
 ├── .gitignore
 └── README.md
 ```

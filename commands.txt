@@ -105,9 +105,8 @@ SECTION 4: WEB APPLICATION EXECUTION (3-TIER APPLICATION)
 ================================================================================
 
 IMPORTANT NOTE ON DIRECTORY PATHS:
-- All commands below must be run from the main project folder:
-  `Hotel-Management-System-DBMS`
-- If terminal is in parent folder, run: cd "Hotel-Management-System-DBMS"
+- All commands below are run directly from the project root workspace directory:
+  `dbms` (c:\Users\ADMIN\Downloads\dbms)
 
 --------------------------------------------------------------------------------
 STEP 1: INSTALL REQUIRED PYTHON LIBRARIES

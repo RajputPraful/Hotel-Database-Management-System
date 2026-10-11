@@ -33,8 +33,12 @@ if not exist ".venv" (
 )
 
 REM Step 3: Install Dependencies
-echo Installing dependencies from backend\requirements.txt...
-".venv\Scripts\python.exe" -m pip install -r backend\requirements.txt
+echo Installing dependencies...
+if exist "requirements.txt" (
+    ".venv\Scripts\python.exe" -m pip install -r requirements.txt
+) else if exist "backend\requirements.txt" (
+    ".venv\Scripts\python.exe" -m pip install -r backend\requirements.txt
+)
 if errorlevel 1 (
     echo [ERROR] Failed to install required Python packages.
     pause

@@ -6,8 +6,13 @@ echo ===========================================================================
 echo Connecting to PostgreSQL database 'hotel_management'...
 echo.
 
+cd /d "%~dp0"
 set PGPASSWORD=200728
-set PSQL="C:\Program Files\PostgreSQL\18\bin\psql.exe"
+if exist "C:\Program Files\PostgreSQL\18\bin\psql.exe" (
+    set PSQL="C:\Program Files\PostgreSQL\18\bin\psql.exe"
+) else (
+    set PSQL=psql
+)
 
 echo -------------------------------------------------------------------------------
 echo [1] ALL RESERVATIONS AND GUEST BOOKINGS (LIVE FROM POSTGRESQL)

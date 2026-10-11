@@ -12,7 +12,7 @@ if sys.platform == 'win32':
 DB_HOST = os.environ.get("DB_HOST", "localhost")
 DB_NAME = os.environ.get("DB_NAME", "hotel_management")
 DB_USER = os.environ.get("DB_USER", "postgres")
-DB_PASS = os.environ.get("DB_PASS", "92lnen70")
+DB_PASS = os.environ.get("DB_PASS", "200728")
 DB_PORT = os.environ.get("DB_PORT", "5432")
 
 def initialize_database():

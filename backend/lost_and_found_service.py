@@ -96,7 +96,7 @@ class LostAndFoundItem:
 
 class LostAndFoundService:
     """Business service orchestrating lost and found operations across customer & staff portals."""
-    VALID_STATUSES = ["Reported", "Pending", "Investigating", "Found", "Claimed", "Closed", "Discarded"]
+    VALID_STATUSES = ["Reported", "Pending", "Investigating", "Found", "Returned", "Claimed", "Closed", "Discarded"]
 
     def __init__(self, db_conn_factory):
         self.get_conn = db_conn_factory
@@ -208,7 +208,7 @@ class LostAndFoundService:
                         COUNT(*) AS total,
                         COUNT(*) FILTER (WHERE status IN ('Reported', 'Pending', 'Investigating')) AS pending,
                         COUNT(*) FILTER (WHERE status = 'Found') AS found,
-                        COUNT(*) FILTER (WHERE status = 'Claimed') AS claimed,
+                        COUNT(*) FILTER (WHERE status IN ('Claimed', 'Returned')) AS claimed,
                         COUNT(*) FILTER (WHERE status IN ('Closed', 'Discarded')) AS closed
                     FROM lost_and_found;
                 """)

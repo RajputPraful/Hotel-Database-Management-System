@@ -135,6 +135,21 @@ function fileToBase64(file) {
   });
 }
 
+const pendingStatusUpdates = new Set();
+
+function getStatusBadgeConfig(status) {
+  let badgeClass = 'bg-warning text-dark';
+  let icon = 'fa-triangle-exclamation';
+  if (status === 'Found') { badgeClass = 'bg-primary text-white'; icon = 'fa-magnifying-glass-location'; }
+  else if (status === 'Returned') { badgeClass = 'bg-success text-white'; icon = 'fa-hand-holding-heart'; }
+  else if (status === 'Claimed') { badgeClass = 'bg-success text-white'; icon = 'fa-circle-check'; }
+  else if (status === 'Investigating') { badgeClass = 'bg-info text-dark'; icon = 'fa-clock'; }
+  else if (status === 'Closed') { badgeClass = 'bg-secondary text-white'; icon = 'fa-lock'; }
+  else if (status === 'Pending') { badgeClass = 'bg-danger text-white'; icon = 'fa-hourglass-half'; }
+  else if (status === 'Discarded') { badgeClass = 'bg-dark text-white'; icon = 'fa-trash'; }
+  return { badgeClass, icon };
+}
+
 async function loadLostAndFoundReports() {
   const container = document.getElementById('lfReports');
   if (!container) return;
@@ -161,32 +176,26 @@ async function loadLostAndFoundReports() {
     const isStaff = user && ['receptionist', 'admin', 'staff'].includes((user.role || '').toLowerCase());
 
     container.innerHTML = reports.map(r => {
-      let badgeClass = 'bg-warning text-dark';
-      let icon = 'fa-triangle-exclamation';
-      if (r.status === 'Found') { badgeClass = 'bg-primary text-white'; icon = 'fa-magnifying-glass-location'; }
-      if (r.status === 'Claimed') { badgeClass = 'bg-success text-white'; icon = 'fa-circle-check'; }
-      if (r.status === 'Investigating') { badgeClass = 'bg-info text-dark'; icon = 'fa-clock'; }
-      if (r.status === 'Closed') { badgeClass = 'bg-secondary text-white'; icon = 'fa-lock'; }
-
+      const cfg = getStatusBadgeConfig(r.status);
       const dateStr = r.lost_date ? new Date(r.lost_date).toLocaleString() : 'N/A';
       const createdStr = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
 
       return `
-        <div class="col-md-6 col-lg-4">
+        <div class="col-md-6 col-lg-4" id="lfCard_${r.report_id}">
           <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden bg-white d-flex flex-column justify-content-between">
             <div>
               ${r.image_url ? `
                 <div style="height: 180px; overflow: hidden; background: #0f172a;" class="position-relative">
                   <img src="${r.image_url}" alt="${r.item_name}" style="width: 100%; height: 100%; object-fit: cover;">
-                  <span class="badge ${badgeClass} position-absolute top-0 end-0 m-3 shadow-sm px-3 py-2 rounded-pill">
-                    <i class="fa-solid ${icon} me-1"></i> ${r.status}
+                  <span id="lfBadge_${r.report_id}" class="badge ${cfg.badgeClass} position-absolute top-0 end-0 m-3 shadow-sm px-3 py-2 rounded-pill">
+                    <i class="fa-solid ${cfg.icon} me-1"></i> <span>${r.status}</span>
                   </span>
                 </div>
               ` : `
                 <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
                   <span class="text-muted small"><i class="fa-solid fa-tag text-gold me-1"></i> ${r.category || 'Belonging'}</span>
-                  <span class="badge ${badgeClass} px-3 py-1.5 rounded-pill shadow-sm">
-                    <i class="fa-solid ${icon} me-1"></i> ${r.status}
+                  <span id="lfBadge_${r.report_id}" class="badge ${cfg.badgeClass} px-3 py-1.5 rounded-pill shadow-sm">
+                    <i class="fa-solid ${cfg.icon} me-1"></i> <span>${r.status}</span>
                   </span>
                 </div>
               `}
@@ -220,15 +229,17 @@ async function loadLostAndFoundReports() {
 
             ${isStaff ? `
               <div class="p-3 bg-light border-top d-flex gap-2">
-                <div class="dropdown flex-grow-1">
-                  <button class="btn btn-sm btn-outline-navy w-100 rounded-pill dropdown-toggle py-1.5" type="button" data-bs-toggle="dropdown">
+                <div class="dropdown flex-grow-1" id="dropdownWrap_${r.report_id}">
+                  <button id="btnStatus_${r.report_id}" class="btn btn-sm btn-outline-navy w-100 rounded-pill dropdown-toggle py-1.5" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fa-solid fa-pen-to-square me-1"></i> Update Status
                   </button>
                   <ul class="dropdown-menu dropdown-menu-end shadow">
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="updateStatusPrompt(${r.report_id}, 'Investigating')"><i class="fa-solid fa-clock text-info me-2"></i>Investigating</a></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="updateStatusPrompt(${r.report_id}, 'Found')"><i class="fa-solid fa-magnifying-glass-location text-primary me-2"></i>Found (Item in Custody)</a></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="updateStatusPrompt(${r.report_id}, 'Claimed')"><i class="fa-solid fa-circle-check text-success me-2"></i>Claimed (Returned to Guest)</a></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="updateStatusPrompt(${r.report_id}, 'Closed')"><i class="fa-solid fa-lock text-secondary me-2"></i>Closed</a></li>
+                    <li><a class="dropdown-item ${r.status === 'Reported' ? 'active' : ''}" href="javascript:void(0)" onclick="updateStatusPrompt(${r.report_id}, 'Reported')"><i class="fa-solid fa-triangle-exclamation text-warning me-2"></i>Reported</a></li>
+                    <li><a class="dropdown-item ${r.status === 'Investigating' ? 'active' : ''}" href="javascript:void(0)" onclick="updateStatusPrompt(${r.report_id}, 'Investigating')"><i class="fa-solid fa-clock text-info me-2"></i>Investigating</a></li>
+                    <li><a class="dropdown-item ${r.status === 'Found' ? 'active' : ''}" href="javascript:void(0)" onclick="updateStatusPrompt(${r.report_id}, 'Found')"><i class="fa-solid fa-magnifying-glass-location text-primary me-2"></i>Found (Item in Custody)</a></li>
+                    <li><a class="dropdown-item ${r.status === 'Returned' ? 'active' : ''}" href="javascript:void(0)" onclick="updateStatusPrompt(${r.report_id}, 'Returned')"><i class="fa-solid fa-hand-holding-heart text-success me-2"></i>Returned (Returned to Owner)</a></li>
+                    <li><a class="dropdown-item ${r.status === 'Claimed' ? 'active' : ''}" href="javascript:void(0)" onclick="updateStatusPrompt(${r.report_id}, 'Claimed')"><i class="fa-solid fa-circle-check text-success me-2"></i>Claimed (Owner Verified)</a></li>
+                    <li><a class="dropdown-item ${r.status === 'Closed' ? 'active' : ''}" href="javascript:void(0)" onclick="updateStatusPrompt(${r.report_id}, 'Closed')"><i class="fa-solid fa-lock text-secondary me-2"></i>Closed</a></li>
                   </ul>
                 </div>
               </div>
@@ -250,30 +261,91 @@ async function loadLostAndFoundReports() {
   }
 }
 
-async function updateStatusPrompt(reportId, newStatus) {
-  const notes = prompt(`Enter resolution notes or location details for report #${reportId} (Status: ${newStatus}):`, `Handled by Front Desk reception team.`);
-  if (notes === null) return;
+async function updateStatusPrompt(reportId, newStatus, customNotes) {
+  if (pendingStatusUpdates.has(reportId)) return;
+  pendingStatusUpdates.add(reportId);
+
+  const btn = document.getElementById(`btnStatus_${reportId}`);
+  const badgeEl = document.getElementById(`lfBadge_${reportId}`);
+  const prevBtnHtml = btn ? btn.innerHTML : '';
+  const prevBadgeHtml = badgeEl ? badgeEl.innerHTML : '';
+  const prevBadgeClass = badgeEl ? badgeEl.className : '';
+
+  // 1. Display saving / loading state
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> Saving...`;
+  }
 
   const user = getCurrentUser();
+  const staffId = user?.staffId || user?.staff_id || 1;
+  const userRole = user?.role || 'Receptionist';
+  const notes = (customNotes !== undefined && customNotes !== null)
+    ? customNotes
+    : `Status updated to ${newStatus} by ${user?.name || 'Reception Staff'}.`;
+
   try {
-    const res = await fetch(`${API_BASE}/lost-and-found/${reportId}/status`, {
+    // 2. Send selected status to existing Flask API (PUT /api/lost-and-found/<id>)
+    const res = await fetch(`${API_BASE}/lost-and-found/${reportId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-Role': userRole,
+        'X-Staff-Id': String(staffId)
+      },
       body: JSON.stringify({
         status: newStatus,
-        staff_id: user?.staffId || 1,
+        staff_id: staffId,
+        role: userRole,
         notes: notes
       })
     });
-    const data = await res.json();
+
+    const data = await res.json().catch(() => ({}));
+
     if (res.ok) {
-      showAlert(`Report #${reportId} updated to status "${newStatus}".`, 'success');
+      // 3. Show success alert
+      showAlert(`Report #${reportId} status updated to "${newStatus}" successfully!`, 'success');
+
+      // 4. Update the item's visible status badge immediately after success
+      if (badgeEl) {
+        const cfg = getStatusBadgeConfig(newStatus);
+        const isAbsolute = prevBadgeClass.includes('position-absolute');
+        badgeEl.className = isAbsolute
+          ? `badge ${cfg.badgeClass} position-absolute top-0 end-0 m-3 shadow-sm px-3 py-2 rounded-pill`
+          : `badge ${cfg.badgeClass} px-3 py-1.5 rounded-pill shadow-sm`;
+        badgeEl.innerHTML = `<i class="fa-solid ${cfg.icon} me-1"></i> <span>${newStatus}</span>`;
+      }
+
+      // 5. Refresh / reload item data so saved status remains correct
       await loadLostAndFoundReports();
     } else {
-      showAlert(data.error || 'Failed to update report status.', 'danger');
+      // 6. Meaningful error message & restore previous status if save fails
+      showAlert(data.error || `Failed to update status for Report #${reportId}.`, 'danger');
+      if (badgeEl) {
+        badgeEl.className = prevBadgeClass;
+        badgeEl.innerHTML = prevBadgeHtml;
+      }
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = prevBtnHtml;
+      }
     }
   } catch (err) {
     console.error(err);
-    showAlert('Network error while updating status.', 'danger');
+    showAlert('Network error while updating status. Please verify the Flask backend is running.', 'danger');
+    if (badgeEl) {
+      badgeEl.className = prevBadgeClass;
+      badgeEl.innerHTML = prevBadgeHtml;
+    }
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = prevBtnHtml;
+    }
+  } finally {
+    pendingStatusUpdates.delete(reportId);
+    if (btn) {
+      btn.disabled = false;
+    }
   }
 }

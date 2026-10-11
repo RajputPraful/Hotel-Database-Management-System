@@ -317,12 +317,22 @@ CREATE OR REPLACE PROCEDURE sp_create_reservation(
     p_check_in DATE,
     p_check_out DATE,
     p_number_of_guests INT,
+    p_special_requests TEXT DEFAULT '',
     INOUT p_reservation_id INT DEFAULT NULL
 )
 LANGUAGE plpgsql AS $$
 DECLARE
     v_conflict_count INT;
+    v_room_active BOOLEAN;
 BEGIN
+    SELECT is_active INTO v_room_active
+    FROM rooms
+    WHERE room_id = p_room_id;
+
+    IF NOT FOUND OR v_room_active = FALSE THEN
+        RAISE EXCEPTION 'Room ID % is inactive or does not exist.', p_room_id;
+    END IF;
+
     SELECT COUNT(*) INTO v_conflict_count
     FROM reservations
     WHERE room_id = p_room_id
@@ -334,9 +344,30 @@ BEGIN
         RAISE EXCEPTION 'Room % is already booked for dates % to %', p_room_id, p_check_in, p_check_out;
     END IF;
 
-    INSERT INTO reservations (customer_id, room_id, check_in, check_out, number_of_guests, status)
-    VALUES (p_customer_id, p_room_id, p_check_in, p_check_out, p_number_of_guests, 'Confirmed')
+    INSERT INTO reservations (customer_id, room_id, check_in, check_out, number_of_guests, special_requests, status)
+    VALUES (p_customer_id, p_room_id, p_check_in, p_check_out, p_number_of_guests, COALESCE(p_special_requests, ''), 'Confirmed')
     RETURNING reservation_id INTO p_reservation_id;
+
+    IF p_check_in = CURRENT_DATE THEN
+        UPDATE rooms SET status = 'Occupied' WHERE room_id = p_room_id;
+    END IF;
+END;
+$$;
+
+-- 6-parameter overload for compatibility
+CREATE OR REPLACE PROCEDURE sp_create_reservation(
+    p_customer_id INT,
+    p_room_id INT,
+    p_check_in DATE,
+    p_check_out DATE,
+    p_number_of_guests INT,
+    INOUT p_reservation_id INT DEFAULT NULL
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    CALL sp_create_reservation(
+        p_customer_id, p_room_id, p_check_in, p_check_out, p_number_of_guests, '', p_reservation_id
+    );
 END;
 $$;
 

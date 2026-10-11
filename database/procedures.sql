@@ -91,6 +91,23 @@ BEGIN
 END;
 $$;
 
+-- 6-parameter overload for callers omitting special_requests
+CREATE OR REPLACE PROCEDURE sp_create_reservation(
+    p_customer_id INT,
+    p_room_id INT,
+    p_check_in DATE,
+    p_check_out DATE,
+    p_number_of_guests INT,
+    INOUT p_reservation_id INT DEFAULT NULL
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    CALL sp_create_reservation(
+        p_customer_id, p_room_id, p_check_in, p_check_out, p_number_of_guests, '', p_reservation_id
+    );
+END;
+$$;
+
 
 -- --------------------------------------------------------------------------------
 -- 3. PROCEDURE: GUEST CHECK-IN

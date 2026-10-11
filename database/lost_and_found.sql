@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS public.lost_and_found (
     reporter_email VARCHAR(100) NOT NULL,
     reporter_phone VARCHAR(30),
     status VARCHAR(30) NOT NULL DEFAULT 'Reported' 
-        CHECK (status IN ('Reported', 'Investigating', 'Found', 'Claimed', 'Closed')),
+        CHECK (status IN ('Reported', 'Investigating', 'Found', 'Returned', 'Claimed', 'Closed', 'Pending', 'Discarded')),
     found_by_staff_id INT REFERENCES public.staff(staff_id) ON DELETE SET NULL,
     staff_notes TEXT,
     resolved_at TIMESTAMP WITH TIME ZONE,
@@ -80,7 +80,7 @@ LANGUAGE plpgsql AS $$
 DECLARE
     v_resolved_time TIMESTAMP WITH TIME ZONE := NULL;
 BEGIN
-    IF p_new_status IN ('Found', 'Claimed', 'Closed') THEN
+    IF p_new_status IN ('Found', 'Claimed', 'Closed', 'Returned') THEN
         v_resolved_time := CURRENT_TIMESTAMP;
     END IF;
 

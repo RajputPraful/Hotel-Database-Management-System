@@ -2138,9 +2138,13 @@
       tbody.innerHTML = filtered.map(item => {
         const statusBadge = 
           item.status === 'Pending' ? '<span class="badge bg-danger">Pending</span>' :
-          item.status === 'Found' ? '<span class="badge bg-warning text-dark">Found</span>' :
+          item.status === 'Found' ? '<span class="badge bg-primary text-white">Found</span>' :
+          item.status === 'Returned' ? '<span class="badge bg-success">Returned</span>' :
           item.status === 'Claimed' ? '<span class="badge bg-success">Claimed</span>' :
-          '<span class="badge bg-secondary">Discarded</span>';
+          item.status === 'Investigating' ? '<span class="badge bg-info text-dark">Investigating</span>' :
+          item.status === 'Closed' ? '<span class="badge bg-secondary">Closed</span>' :
+          item.status === 'Reported' ? '<span class="badge bg-warning text-dark">Reported</span>' :
+          '<span class="badge bg-secondary">' + item.status + '</span>';
 
         const photoHtml = item.image_data 
           ? `<img src="${item.image_data}" alt="${item.item_name}" class="rounded-3 shadow-sm" style="width:48px;height:48px;object-fit:cover;cursor:pointer;" onclick="window.open('${item.image_data}')">`
@@ -2218,12 +2222,12 @@
     }
 
     function promptCustomLostFoundStatus(itemId, currentStatus) {
-      const target = prompt(`Enter new status (Pending, Found, Claimed, Discarded):`, currentStatus);
+      const target = prompt(`Enter new status (Reported, Investigating, Found, Returned, Claimed, Closed):`, currentStatus);
       if (!target) return;
-      const valid = ['Pending', 'Found', 'Claimed', 'Discarded'];
+      const valid = ['Reported', 'Investigating', 'Found', 'Returned', 'Claimed', 'Closed', 'Pending', 'Discarded'];
       const formatted = valid.find(s => s.toLowerCase() === target.trim().toLowerCase());
       if (!formatted) {
-        alert('Invalid status! Choose from: Pending, Found, Claimed, Discarded');
+        alert('Invalid status! Choose from: Reported, Investigating, Found, Returned, Claimed, Closed');
         return;
       }
       updateAdminLostFoundStatus(itemId, formatted);

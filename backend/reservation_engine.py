@@ -120,9 +120,9 @@ class ReservationService:
                 # Call stored procedure
                 cur.execute("""
                     CALL sp_create_reservation(
-                        %s, %s, %s::date, %s::date, %s, %s, NULL, NULL
+                        %s, %s, %s::date, %s::date, %s, %s::text, NULL::int
                     );
-                """, (customer_id, room['room_id'], check_in, check_out, guests, special_requests))
+                """, (customer_id, room['room_id'], check_in, check_out, guests, special_requests or ""))
                 row = cur.fetchone()
                 conn.commit()
 

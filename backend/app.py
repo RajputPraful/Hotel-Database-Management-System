@@ -565,8 +565,8 @@ def create_reservation():
         # (Encapsulates atomic date overlap checks, transaction validation, and trigger dispatch in PL/pgSQL)
         try:
             cursor.execute(
-                "CALL sp_create_reservation(%s, %s, %s::DATE, %s::DATE, %s, %s, NULL);",
-                (customer_id, room_id, check_in, check_out, number_of_guests, special_requests)
+                "CALL sp_create_reservation(%s, %s, %s::DATE, %s::DATE, %s, %s::TEXT, NULL::INT);",
+                (customer_id, room_id, check_in, check_out, number_of_guests, special_requests or "")
             )
             proc_row = cursor.fetchone()
             new_res_id = (proc_row.get("p_reservation_id") if isinstance(proc_row, dict) else proc_row[0]) if proc_row else None
@@ -643,7 +643,7 @@ def check_out_guest(reservation_id):
         # (Computes stay charges, sums service requests, calculates tax, generates bill,
         #  updates reservation status to 'Checked-out', and automatically fires triggers!)
         try:
-            cursor.execute("CALL sp_process_checkout(%s, %s::NUMERIC, NULL, NULL);", (reservation_id, discount))
+            cursor.execute("CALL sp_process_checkout(%s, %s::NUMERIC, NULL::INT, NULL::NUMERIC);", (reservation_id, discount))
             proc_res = cursor.fetchone()
             bill_id = (proc_res.get("p_bill_id") if isinstance(proc_res, dict) else proc_res[0]) if proc_res else None
             connection.commit()
@@ -1865,7 +1865,7 @@ def create_lost_and_found_report():
 
         cursor.execute("""
             CALL sp_report_lost_item(
-                %s, %s, %s, %s, %s::timestamptz, %s, %s, %s, %s, %s, NULL
+                %s, %s, %s, %s, %s::timestamptz, %s, %s, %s, %s, %s, NULL::INT
             );
         """, (
             customer_id, item_name, category, location_lost,
@@ -1891,34 +1891,123 @@ def create_lost_and_found_report():
         return jsonify({"error": f"Database error: {str(e)}"}), 500
 
 
+@app.route("/api/lost-and-found/<int:report_id>", methods=["PUT"])
 @app.route("/api/lost-and-found/<int:report_id>/status", methods=["PUT"])
 def update_lost_and_found_status(report_id):
+    connection = None
+    cursor = None
     try:
-        data = request.get_json() or {}
-        new_status = data.get("status")
-        staff_id = data.get("staff_id") or 1
-        staff_notes = data.get("resolution_notes") or data.get("notes") or ""
+        if not report_id or report_id <= 0:
+            return jsonify({"error": "Valid report ID is required."}), 400
 
-        valid_statuses = ["Reported", "Pending", "Investigating", "Found", "Claimed", "Closed", "Discarded"]
-        if not new_status or new_status not in valid_statuses:
-            return jsonify({"error": f"Valid status is required. Choose from {valid_statuses}."}), 400
+        data = request.get_json(silent=True) or {}
+        new_status_raw = (data.get("status") or "").strip()
+
+        valid_statuses = ["Reported", "Investigating", "Found", "Returned", "Claimed", "Closed", "Pending", "Discarded"]
+        matched_status = next((s for s in valid_statuses if s.lower() == new_status_raw.lower()), None)
+
+        if not new_status_raw or not matched_status:
+            return jsonify({
+                "error": f"Invalid status '{new_status_raw}'. Allowed statuses: Reported, Investigating, Found, Returned, Claimed, Closed."
+            }), 400
+
+        # Role & Authorization validation
+        role_header = (request.headers.get("X-User-Role") or data.get("role") or "").strip().lower()
+        if role_header == "customer":
+            return jsonify({"error": "Forbidden: Guests and customers are not authorized to update lost item status."}), 403
+
+        staff_id = data.get("staff_id") or request.headers.get("X-Staff-Id")
+        staff_notes = (data.get("resolution_notes") or data.get("notes") or "").strip()
 
         connection = get_db_connection()
         cursor = connection.cursor(cursor_factory=RealDictCursor)
 
+        # Check caller authorization if staff_id is provided
+        active_staff_id = None
+        if staff_id:
+            try:
+                staff_id_int = int(staff_id)
+                cursor.execute("SELECT staff_id, name, role, is_active FROM staff WHERE staff_id = %s;", (staff_id_int,))
+                staff_member = cursor.fetchone()
+                if not staff_member or not staff_member.get("is_active"):
+                    cursor.close()
+                    connection.close()
+                    return jsonify({"error": "Unauthorized: Invalid or inactive staff credentials."}), 401
+                if staff_member.get("role") not in ["Admin", "Receptionist"]:
+                    cursor.close()
+                    connection.close()
+                    return jsonify({"error": "Forbidden: Only Receptionist and Admin staff can update status."}), 403
+                active_staff_id = staff_member["staff_id"]
+            except (ValueError, TypeError):
+                cursor.close()
+                connection.close()
+                return jsonify({"error": "Unauthorized: Invalid staff ID format."}), 401
+        elif role_header in ["receptionist", "admin", "staff"]:
+            # If role header provided without explicit staff_id, default to active receptionist staff
+            cursor.execute("SELECT staff_id FROM staff WHERE role = 'Receptionist' AND is_active = TRUE LIMIT 1;")
+            first_staff = cursor.fetchone()
+            active_staff_id = first_staff["staff_id"] if first_staff else 1
+        else:
+            # Unauthenticated request without staff credentials
+            cursor.close()
+            connection.close()
+            return jsonify({"error": "Unauthorized: Staff authentication required to update item status."}), 401
+
+        # Check if the report exists
+        cursor.execute("SELECT report_id, status FROM lost_and_found WHERE report_id = %s;", (report_id,))
+        existing_report = cursor.fetchone()
+        if not existing_report:
+            cursor.close()
+            connection.close()
+            return jsonify({"error": f"Lost and found report #{report_id} does not exist."}), 404
+
+        # Execute procedure to update status and record resolved_at / staff_notes
         cursor.execute("""
             CALL sp_update_lost_item_status(%s, %s, %s, %s);
-        """, (report_id, staff_id, new_status, staff_notes))
+        """, (report_id, active_staff_id, matched_status, staff_notes))
         connection.commit()
+
+        # Fetch updated record
+        cursor.execute("""
+            SELECT lf.report_id, lf.report_id AS item_id, lf.item_name, lf.category,
+                   lf.location_lost, lf.location_lost AS location,
+                   lf.lost_date, lf.lost_date AS lost_at, lf.description,
+                   lf.reporter_name, lf.reporter_email, lf.status,
+                   s.name AS resolved_by_staff, lf.staff_notes, lf.resolved_at
+            FROM lost_and_found lf
+            LEFT JOIN staff s ON lf.found_by_staff_id = s.staff_id
+            WHERE lf.report_id = %s;
+        """, (report_id,))
+        updated_item = cursor.fetchone()
 
         cursor.close()
         connection.close()
 
         return jsonify({
-            "message": f"Report #{report_id} status updated to '{new_status}' successfully."
-        })
+            "message": f"Report #{report_id} status updated to '{matched_status}' successfully.",
+            "report_id": report_id,
+            "item_id": report_id,
+            "status": matched_status,
+            "item": updated_item
+        }), 200
+
     except Exception as e:
-        return jsonify({"error": f"Database error: {str(e)}"}), 500
+        if connection:
+            try:
+                connection.rollback()
+            except Exception:
+                pass
+        if cursor:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if connection:
+            try:
+                connection.close()
+            except Exception:
+                pass
+        return jsonify({"error": "Failed to update lost and found status due to a database error."}), 500
 
 
 if __name__ == "__main__":

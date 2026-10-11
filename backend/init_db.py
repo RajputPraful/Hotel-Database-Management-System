@@ -102,6 +102,20 @@ def initialize_database():
             conn_target.commit()
             print("   [OK] Analytics Views & Materialized Views updated!")
 
+        procedures_path = os.path.join(project_root, "database", "procedures.sql")
+        if os.path.exists(procedures_path):
+            with open(procedures_path, "r", encoding="utf-8") as f:
+                cur_target.execute(f.read())
+            conn_target.commit()
+            print("   [OK] Stored Procedures & Functions (procedures.sql) applied!")
+
+        lost_and_found_path = os.path.join(project_root, "database", "lost_and_found.sql")
+        if os.path.exists(lost_and_found_path):
+            with open(lost_and_found_path, "r", encoding="utf-8") as f:
+                cur_target.execute(f.read())
+            conn_target.commit()
+            print("   [OK] Lost and Found Module (lost_and_found.sql) applied!")
+
         # Step 3: Insert seed data if tables are empty
         cur_target.execute("SELECT COUNT(*) FROM rooms;")
         room_count = cur_target.fetchone()[0]

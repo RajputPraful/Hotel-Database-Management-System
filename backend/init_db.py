@@ -1,4 +1,4 @@
-import os
+    import os
 import sys
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT

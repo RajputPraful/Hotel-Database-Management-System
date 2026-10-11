@@ -1,16 +1,27 @@
 # GitHub Linguist Language Detection Configuration
-# Ensure all database scripts are classified into unified SQL
+# Unified classification for relational database management suite
 *.sql linguist-detectable=true
 *.sql linguist-language=SQL
 database/*.sql linguist-detectable=true
 database/*.sql linguist-language=SQL
 
-# Exclude web presentation templates, styles, and assets
-*.html linguist-detectable=false
-*.css linguist-detectable=false
-assets/** linguist-vendored=true
+# Python Backend Services & Rest APIs
+*.py linguist-detectable=true
+*.py linguist-language=Python
+backend/*.py linguist-detectable=true
+backend/*.py linguist-language=Python
 
-# Exclude batch and documentation scripts from language calculation
+# Frontend Web Portals & Dynamic Views
+*.html linguist-detectable=true
+*.html linguist-language=HTML
+
+# Presentation Stylesheets & Client Interactions
+assets/js/*.js linguist-detectable=true
+assets/js/*.js linguist-language=JavaScript
+assets/css/*.css linguist-detectable=true
+assets/css/*.css linguist-language=CSS
+
+# Exclude batch launchers and documentation from language metrics
 *.bat linguist-documentation=true
 *.md linguist-documentation=true
 *.txt linguist-documentation=true

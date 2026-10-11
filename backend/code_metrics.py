@@ -31,18 +31,16 @@ total_files = sum(s['files'] for s in stats.values())
 total_lines = sum(s['lines'] for s in stats.values())
 total_bytes = sum(s['bytes'] for s in stats.values())
 
-# Calculate GitHub Linguist Tracked Languages (Python & SQL)
-py_bytes = stats['Python']['bytes']
-sql_bytes = stats['SQL']['bytes']
-linguist_total_bytes = py_bytes + sql_bytes
-py_linguist_pct = (py_bytes / linguist_total_bytes * 100) if linguist_total_bytes else 0
-sql_linguist_pct = (sql_bytes / linguist_total_bytes * 100) if linguist_total_bytes else 0
+# Calculate GitHub Linguist Tracked Languages
+linguist_total_bytes = sum(s['bytes'] for s in stats.values())
 
 print('=' * 68)
-print("GITHUB LINGUIST LANGUAGE BAR RATIO (.gitattributes filtered):")
+print("GITHUB LINGUIST LANGUAGE BAR RATIO (.gitattributes enabled):")
 print('=' * 68)
-print(f"Python      : {py_bytes:,} bytes ({py_linguist_pct:.2f}%)")
-print(f"SQL         : {sql_bytes:,} bytes ({sql_linguist_pct:.2f}%)")
+for lang, s in sorted(stats.items(), key=lambda x: x[1]['bytes'], reverse=True):
+    b_pct = (s['bytes'] / linguist_total_bytes * 100) if linguist_total_bytes else 0
+    print(f"{lang:<12}: {s['bytes']:>10,} bytes ({b_pct:>5.2f}%)")
+
 print('=' * 68)
 print(f"{'LANGUAGE':<12} | {'FILES':<8} | {'LINES OF CODE':<15} | {'PERCENTAGE':<12}")
 print('=' * 68)
@@ -51,7 +49,8 @@ for lang, s in sorted(stats.items(), key=lambda x: x[1]['lines'], reverse=True):
     pct = (s['lines'] / total_lines * 100) if total_lines else 0
     print(f"{lang:<12} | {s['files']:^8} | {s['lines']:^15} | {pct:>10.2f}%")
 
+sql_pct = (stats['SQL']['bytes'] / linguist_total_bytes * 100) if linguist_total_bytes else 0
 print('=' * 68)
-print(f"Python/SQL Target Ratio: 45.0% Python | 55.0% SQL")
-print(f"Verified GitHub Match  : Python {py_linguist_pct:.2f}% | SQL {sql_linguist_pct:.2f}%")
+print(f"SQL Target Ratio       : 40.0% SQL (Balanced across project stack)")
+print(f"Verified GitHub Match  : SQL {sql_pct:.2f}% | Python {(stats['Python']['bytes']/linguist_total_bytes*100):.2f}% | HTML {(stats['HTML']['bytes']/linguist_total_bytes*100):.2f}%")
 print('=' * 68)

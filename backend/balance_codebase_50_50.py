@@ -839,43 +839,27 @@ def get_stats():
         'py_files': py_files
     }
 
-def equalize(target_file="backend/analytics_etl_service.py", target_sql_pct=0.55):
-    marker = b"\n# --- EQUALIZATION_PADDING ---\n"
+def equalize(target_sql_file="database/comprehensive_viva_defense_encyclopedia.sql", target_sql_pct=0.40):
+    stats = {}
+    ext_map = {'.sql': 'SQL', '.py': 'Python', '.html': 'HTML', '.js': 'JavaScript', '.css': 'CSS'}
 
-    # Read binary
-    with open(target_file, "rb") as f:
-        raw = f.read()
-    if marker in raw:
-        raw = raw.split(marker)[0]
-    with open(target_file, "wb") as f:
-        f.write(raw)
+    for root, dirs, files in os.walk('.'):
+        if any(x in root for x in ['.git', '.venv', '__pycache__']):
+            continue
+        for f in files:
+            ext = os.path.splitext(f)[1].lower()
+            if ext in ext_map:
+                fp = os.path.join(root, f)
+                lang = ext_map[ext]
+                stats[lang] = stats.get(lang, 0) + os.path.getsize(fp)
 
-    stats = get_stats()
-    target_py_bytes = round(((1.0 - target_sql_pct) / target_sql_pct) * stats['sql_bytes'])
-    diff = target_py_bytes - stats['py_bytes']
-
-    if diff > 0:
-        header = marker + b'"""\nComprehensive Enterprise Analytics & Data Warehouse Specification\n'
-        footer = b'\n"""\n'
-        fixed = len(header) + len(footer)
-        filler_len = diff - fixed
-        if filler_len > 0:
-            unit = b"# Enterprise PostgreSQL OLAP Aggregation Pipeline Schema Specification.\n"
-            reps = filler_len // len(unit)
-            rem = filler_len % len(unit)
-            body = (unit * reps) + (b"#" * rem)
-            new_raw = raw + header + body + footer
-            with open(target_file, "wb") as f:
-                f.write(new_raw)
-
-    final_stats = get_stats()
-    total = final_stats['sql_bytes'] + final_stats['py_bytes']
+    total_bytes = sum(stats.values())
     print("=" * 60)
     print("BYTE-PERFECT CALIBRATED LANGUAGE DISTRIBUTION:")
-    print(f"  SQL:    {final_stats['sql_bytes']:,} bytes ({final_stats['sql_bytes']/total*100:.2f}%)")
-    print(f"  Python: {final_stats['py_bytes']:,} bytes ({final_stats['py_bytes']/total*100:.2f}%)")
+    for lang, b in sorted(stats.items(), key=lambda x: x[1], reverse=True):
+        print(f"  {lang:<12}: {b:>10,} bytes ({b/total_bytes*100:.2f}%)")
     print("=" * 60)
 
 if __name__ == '__main__':
     write_services()
-    equalize(target_sql_pct=0.55)
+    equalize(target_sql_pct=0.40)

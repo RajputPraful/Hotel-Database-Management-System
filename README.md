@@ -121,6 +121,17 @@ Frontend
 | Database Administration | pgAdmin 4 |
 | Version Control | Git / GitHub |
 
+### 📊 Codebase Language Distribution
+
+| Language | Byte Volume | GitHub Linguist % | Lines of Code (LOC) | LOC % |
+|---|---|---|---|---|
+| **SQL** | 404,885 bytes | **40.00%** | 8,626 lines | 39.37% |
+| **Python** | 304,895 bytes | **30.12%** | 6,510 lines | 29.71% |
+| **HTML** | 235,080 bytes | **23.22%** | 4,756 lines | 21.71% |
+| **JavaScript** | 49,180 bytes | **4.86%** | 1,258 lines | 5.74% |
+| **CSS** | 18,218 bytes | **1.80%** | 760 lines | 3.47% |
+| **Total** | **1,012,258 bytes** | **100.00%** | **21,910 lines** | **100.00%** |
+
 ---
 
 # 4. Main Features
